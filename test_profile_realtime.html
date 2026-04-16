@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile Photo Real-Time Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .photo-display {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FF2BAC, #FF6BCE);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 3rem;
+      margin: 20px auto;
+      overflow: hidden;
+    }
+    .photo-display img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    .status.success { background: #d4edda; color: #155724; }
+    .status.error { background: #f8d7da; color: #721c24; }
+    .status.info { background: #d1ecf1; color: #0c5460; }
+    button {
+      background: #FF2BAC;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover { background: #e0259a; }
+    .log {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+      margin-top: 20px;
+    }
+    .log-entry {
+      padding: 5px;
+      border-bottom: 1px solid #dee2e6;
+    }
+    input[type="file"] {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Profile Photo Real-Time Test</h1>
+    
+    <div id="status" class="status info">
+      Status: Initializing...
+    </div>
+    
+    <div class="photo-display" id="photoDisplay">
+      <span id="initials">?</span>
+      <img id="photoImg" style="display: none;">
+    </div>
+    
+    <div>
+      <input type="file" id="fileInput" accept="image/*">
+      <button onclick="uploadPhoto()">Upload Photo</button>
+      <button onclick="removePhoto()">Remove Photo</button>
+      <button onclick="forceCheck()">Force Check</button>
+      <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div>
+      <p><strong>Last Photo Hash:</strong> <span id="lastHash">-</span></p>
+      <p><strong>Polling Status:</strong> <span id="pollingStatus">-</span></p>
+      <p><strong>Token Status:</strong> <span id="tokenStatus">-</span></p>
+    </div>
+    
+    <div class="log" id="log"></div>
+  </div>
+
+  <script>
+    let lastPhotoHash = null;
+    let pollingInterval = null;
+    
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+      logDiv.insertBefore(entry, logDiv.firstChild);
+      console.log(message);
+    }
+    
+    function updateStatus(message, type = 'info') {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = message;
+      statusDiv.className = `status ${type}`;
+      log(message, type);
+    }
+    
+    function getToken() {
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+      document.getElementById('tokenStatus').textContent = token ? 'Found ✓' : 'Not Found ✗';
+      return token;
+    }
+    
+    function startPolling() {
+      if (pollingInterval) clearInterval(pollingInterval);
+      pollingInterval = setInterval(checkForUpdates, 3000);
+      document.getElementById('pollingStatus').textContent = 'Active ✓';
+      log('Polling started (3s interval)');
+    }
+    
+    function checkForUpdates() {
+      const token = getToken();
+      if (!token) {
+        log('No token found, skipping check', 'error');
+        return;
+      }
+      
+      fetch('/api/account/profile', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          const serverPhoto = data.user.profile_picture || data.user.profile_photo || null;
+          const photoHash = serverPhoto || 'none';
+          
+          document.getElementById('lastHash').textContent = photoHash;
+          
+          if (lastPhotoHash !== null && lastPhotoHash !== photoHash) {
+            log(`🔄 CHANGE DETECTED! Old: ${lastPhotoHash} → New: ${photoHash}`, 'success');
+            updatePhotoDisplay(serverPhoto);
+          } else {
+            log(`✓ No change (${photoHash})`);
+          }
+          
+          lastPhotoHash = photoHash;
+        } else {
+          log('API returned error: ' + JSON.stringify(data), 'error');
+        }
+      })
+      .catch(err => {
+        log('Polling error: ' + err.message, 'error');
+      });
+    }
+    
+    function updatePhotoDisplay(photoUrl) {
+      const img = document.getElementById('photoImg');
+      const initials = document.getElementById('initials');
+      
+      if (photoUrl) {
+        const cacheBustedUrl = photoUrl + '?t=' + Date.now();
+        img.src = cacheBustedUrl;
+        img.style.display = 'block';
+        initials.style.display = 'none';
+        log('Photo displayed: ' + cacheBustedUrl);
+      } else {
+        img.style.display = 'none';
+        initials.style.display = 'block';
+        log('Photo removed, showing initials');
+      }
+    }
+    
+    function uploadPhoto() {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files[0];
+      
+      if (!file) {
+        updateStatus('Please select a file first', 'error');
+        return;
+      }
+      
+      const token = getToken();
+      if (!token) {
+        updateStatus('No auth token found. Please login.', 'error');
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('photo', file);
+      
+      updateStatus('Uploading...', 'info');
+      log('Starting upload: ' + file.name);
+      
+      fetch('/api/account/profile-photo', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        log('Upload response: ' + JSON.stringify(data));
+        if (data.success) {
+          updateStatus('Upload successful!', 'success');
+          lastPhotoHash = data.photo_url;
+          updatePhotoDisplay(data.photo_url);
+          setTimeout(checkForUpdates, 500);
+        } else {
+          updateStatus('Upload failed: ' + data.error, 'error');
+        }
+      })
+      .catch(err => {
+        log('Upload error: ' + err.message, 'error');
+        updateStatus('Upload error: ' + err.message, 'error');
+      });
+    }
+    
+    function removePhoto() {
+      const token = getToken();
+      if (!token) {
+        updateStatus('No auth token found. Please login.', 'error');
+        return;
+      }
+      
+      updateStatus('Removing...', 'info');
+      log('Removing photo');
+      
+      fetch('/api/account/profile-photo', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        log('Remove response: ' + JSON.stringify(data));
+        if (data.success) {
+          updateStatus('Photo removed!', 'success');
+          lastPhotoHash = 'none';
+          updatePhotoDisplay(null);
+          setTimeout(checkForUpdates, 500);
+        } else {
+          updateStatus('Remove failed: ' + data.error, 'error');
+        }
+      })
+      .catch(err => {
+        log('Remove error: ' + err.message, 'error');
+        updateStatus('Remove error: ' + err.message, 'error');
+      });
+    }
+    
+    function forceCheck() {
+      log('Force checking for updates...');
+      checkForUpdates();
+    }
+    
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+    }
+    
+    // Initialize
+    window.addEventListener('load', function() {
+      log('Page loaded');
+      getToken();
+      checkForUpdates();
+      startPolling();
+      updateStatus('Ready - Polling active', 'success');
+    });
+  </script>
+</body>
+</html>

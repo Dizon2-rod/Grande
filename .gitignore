@@ -1,0 +1,57 @@
+# ======================
+# Python
+# ======================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+env/
+
+# Environment variables
+.env
+
+# ======================
+# Flask / App
+# ======================
+instance/
+*.db
+*.sqlite3
+
+# ======================
+# Uploads / Images (IMPORTANT)
+# ======================
+static/uploads/
+static/images/
+
+# Optional: ignore specific file types anywhere
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.env
+# ======================
+# Logs
+# ======================
+*.log
+
+# ======================
+# OS Files
+# ======================
+.DS_Store
+Thumbs.db
+
+# ======================
+# IDE / Editor
+# ======================
+.vscode/
+.idea/
+
+# ======================
+# Build / Temp
+# ======================
+dist/
+build/

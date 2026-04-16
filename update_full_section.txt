@@ -1,0 +1,42 @@
+﻿if quantity <= 0:
+                # Remove item if quantity is 0 or negative
+                cursor.execute("""
+                    DELETE FROM cart 
+                    WHERE user_id = %s AND product_id = %s AND (size = %s OR (size IS NULL AND %s = ''))
+                """, (current_user['id'], product_id, size, size))
+            else:
+                # Check stock availability (size-aware)
+                if size:
+                    cursor.execute("""
+                        SELECT pss.stock_quantity
+                        FROM product_size_stock pss
+                        JOIN products p ON pss.product_id = p.id
+                        WHERE p.id = %s AND pss.size = %s AND p.is_active = 1
+                    """, (product_id, size))
+                    row = cursor.fetchone()
+                    if not row:
+                        cursor.close()
+                        connection.close()
+                        return jsonify({'error': 'Product/size not found or unavailable'}), 404
+                    size_stock = int(row.get('stock_quantity') or 0)
+                    if quantity > size_stock:
+                        cursor.close()
+                        connection.close()
+                        return jsonify({'error': 'Not enough stock available'}), 400
+                else:
+                    cursor.execute("""
+                        SELECT total_stock FROM products 
+                        WHERE id = %s AND is_active = 1
+                    """, (product_id,))
+                    product = cursor.fetchone()
+                    
+                    if not product:
+                        cursor.close()
+                        connection.close()
+                        return jsonify({'error': 'Product not found or unavailable'}), 404
+                    if quantity > (product.get('total_stock') or 0):
+                        cursor.close()
+                        connection.close()
+                        return jsonify({'error': 'Not enough stock available'}), 400
+                
+                # Update quantity

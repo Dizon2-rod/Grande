@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Write a Review</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/account.css">
+  <link rel="stylesheet" href="/static/css/public-compact.css">
+  <link rel="stylesheet" href="/static/css/chat.css">
+  <style>
+    body { background:#f7f7fb; }
+    .container-narrow { max-width: 960px; }
+    .card-review { border-radius: 16px; box-shadow: 0 10px 28px rgba(0,0,0,0.06); border: 1px solid #eee; overflow: hidden; }
+    .header-gradient { background: linear-gradient(135deg, #FFF1F6 0%, #FFE7F3 50%, #fff 100%); border-bottom: 1px solid #f1dbe8; }
+    .step { display:inline-flex; align-items:center; gap:.5rem; padding:.35rem .75rem; background:#fff; border:1px solid #f1dbe8; border-radius: 999px; font-weight:600; font-size:.85rem; }
+    .badge-soft { background:#f6f7fb; border:1px solid #e9ecf5; color:#5b6474; border-radius: 999px; padding:.25rem .6rem; font-size:.75rem; }
+
+    .products-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 14px; }
+    .product-card { display:flex; gap:12px; padding:12px; border: 1px solid #e9ecef; border-radius:12px; background:#fff; transition:.2s; position:relative; }
+    .product-card:hover { border-color:#ffb9da; box-shadow: 0 6px 20px rgba(255,43,172,0.08) }
+    .product-thumb { width:72px; height:72px; border-radius:10px; object-fit:cover; background:#f2f2f7; border:1px solid #eee; }
+    .product-title { font-weight:600; color:#1a202c; }
+    .product-meta { font-size:.85rem; color:#6c757d; }
+    .card-actions { display:flex; gap:.5rem; align-items:center; }
+
+    .star { font-size: 1.9rem; color: #d7d7d7; cursor: pointer; transition: color .15s ease; }
+    .star.active, .star:hover { color: #ffc107; }
+    .rating-label { min-width: 110px; font-weight:600; color:#6b7280; }
+    .char-count { font-size:.8rem; color:#6c757d; }
+
+    .btn-gradient { background: linear-gradient(135deg, #FF2BAC 0%, #FF6BCE 70%); border:none; color:#fff !important; font-weight:700; letter-spacing:.2px; box-shadow: 0 6px 18px rgba(255,43,172,.25); border-radius:10px; padding:.75rem 1.25rem; }
+    .btn-gradient:disabled { opacity: .85; filter: grayscale(0); color:#ffffff !important; box-shadow: none; }
+    .btn-gradient:hover { filter: brightness(1.04); box-shadow: 0 10px 26px rgba(255,43,172,.35); }
+    .muted { color:#6c757d }
+
+    .toast-fixed { position: fixed; top: 20px; right: 20px; z-index: 1060; min-width: 280px; }
+  </style>
+</head>
+<body class="buyer-page">
+  <header class="main-header">
+    <nav class="navbar navbar-expand-lg">
+      <div class="container">
+        <a class="navbar-brand" href="/"><img src="/static/image.png" alt="Grande" class="brand-logo"></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"><span class="navbar-toggler-icon"></span></button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav me-auto">
+            <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+            <li class="nav-item"><a class="nav-link" href="/Public/market.html">Shop</a></li>
+            <li class="nav-item"><a class="nav-link" href="/#categories">Categories</a></li>
+            <li class="nav-item"><a class="nav-link" href="/#sale">Sale</a></li>
+          </ul>
+          <div class="position-relative notification-container"><button class="action-btn notification-btn" id="notificationBtn"><i class="fas fa-bell"></i><span class="cart-count" id="notificationCount">0</span></button><div class="notification-dropdown" id="notificationDropdown"><div class="notification-header"><h5 class="notification-title">Notifications</h5><button class="mark-all-read" id="markAllRead">Mark all read</button></div><div class="notification-list" id="notificationList"><div class="notification-empty"><i class="fas fa-bell"></i><p>No notifications</p></div></div></div></div>
+          <div class="position-relative message-container"><button class="action-btn message-btn" id="messageBtn" title="Messages"><i class="fas fa-comments"></i><span class="cart-count" id="messageCount">0</span></button><div class="message-dropdown" id="messageDropdown"><div class="message-header"><h6 class="message-title">Messages</h6><button class="mark-all-read" id="markAllMessagesRead">Mark all read</button></div><div class="message-list" id="messageList"></div></div></div>
+          <div class="position-relative cart-container"><a href="/Public/cart.html" class="action-btn cart-btn" id="cartBtn"><i class="fas fa-shopping-bag"></i><span class="cart-count" id="cartCount">0</span></a><div class="cart-dropdown" id="cartDropdown"><div class="cart-dropdown-header"><h5 class="cart-dropdown-title">Shopping Cart</h5></div><div class="cart-dropdown-items" id="cartDropdownItems"><div class="cart-empty-message"><i class="fas fa-shopping-bag"></i><p>Your cart is empty</p></div></div><div class="cart-dropdown-footer" id="cartDropdownFooter" style="display: none;"><div class="cart-total"><span>Total:</span><span id="cartTotal">₱0.00</span></div><div class="cart-actions"><a href="/Public/cart.html" class="btn-view-cart">View Cart</a><a href="/Public/checkout.html" class="btn-checkout">Checkout</a></div></div></div></div>
+          <div class="user-section"><div id="authLinks" class="auth-buttons"><a href="../Authenticator/login.html" class="login-btn"><i class="fas fa-sign-in-alt"></i><span class="btn-text">Login</span></a><a href="../Authenticator/register.html" class="register-btn"><i class="fas fa-user-plus"></i><span class="btn-text">Register</span></a></div><div id="userDropdownContainer" class="user-dropdown-container" style="display: none;"><button class="user-profile-btn" id="userProfileBtn" type="button"><div class="user-avatar"><i class="fas fa-user"></i></div><div class="user-info"><span class="user-name">User Name</span><span class="user-role">Role</span></div><i class="fas fa-chevron-down dropdown-arrow"></i></button><div class="user-dropdown-menu" id="userDropdownMenu"><div class="dropdown-header"><div class="user-avatar-large"><i class="fas fa-user"></i></div><div class="user-details"><h6 class="dropdown-user-name">User Name</h6><p class="dropdown-user-email">user@email.com</p><span class="dropdown-user-role">Role</span></div></div><div class="dropdown-divider"></div><div class="dropdown-section"><a href="/templates/UserProfile/profile.html" class="dropdown-item"><i class="fas fa-user-circle"></i> <span>My Profile</span></a><a href="/templates/UserProfile/my_orders.html" class="dropdown-item"><i class="fas fa-shopping-bag"></i> <span>My Orders</span></a><a href="#" class="dropdown-item"><i class="fas fa-heart"></i> <span>Wishlist</span></a><a href="#" class="dropdown-item"><i class="fas fa-cog"></i> <span>Settings</span></a></div><div id="roleDivider" class="dropdown-divider" style="display: none;"></div><div id="roleDashboardSection" class="dropdown-section"></div><div class="dropdown-divider"></div><div class="dropdown-section"><a href="#" class="dropdown-item text-danger" onclick="AuthManager.logout(); return false;"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a></div></div></div></div>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container container-narrow py-4">
+    <a href="/templates/UserProfile/my_orders.html" class="text-decoration-none mb-3 d-inline-block"><i class="fas fa-arrow-left me-2"></i>Back to My Orders</a>
+
+    <div class="card card-review">
+      <div class="header-gradient p-4 pb-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="step"><i class="fas fa-star-half-alt text-warning"></i> Write a Review</div>
+            <div id="orderMeta" class="muted mt-2">Loading order...</div>
+          </div>
+          <div class="text-end">
+            <span id="orderStatusBadge" class="badge-soft">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <div id="eligibilityBox" class="alert alert-info" style="display:none"></div>
+
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0">1) Select the product to review</h6>
+            <a id="viewProductLink" class="small" href="#" target="_blank" style="display:none;">Open product page</a>
+          </div>
+          <div id="productsContainer" class="products-grid"></div>
+        </div>
+
+        <div class="mb-4">
+          <h6 class="mb-2">2) Rate this product</h6>
+          <div class="d-flex align-items-center gap-3">
+            <div id="stars" class="d-flex gap-1" role="radiogroup" aria-label="Rating">
+              <span class="star" role="radio" aria-checked="false" tabindex="0" data-rating="1" title="Terrible">★</span>
+              <span class="star" role="radio" aria-checked="false" tabindex="0" data-rating="2" title="Poor">★</span>
+              <span class="star" role="radio" aria-checked="false" tabindex="0" data-rating="3" title="Okay">★</span>
+              <span class="star" role="radio" aria-checked="false" tabindex="0" data-rating="4" title="Good">★</span>
+              <span class="star" role="radio" aria-checked="false" tabindex="0" data-rating="5" title="Excellent">★</span>
+            </div>
+            <div id="ratingLabel" class="rating-label">Select rating</div>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0">3) Share your experience</h6>
+            <div class="char-count"><span id="charNow">0</span>/1000</div>
+          </div>
+          <textarea id="comment" rows="5" maxlength="1000" class="form-control mb-3" placeholder="What did you like or dislike? Consider quality, fit, packaging, and delivery."></textarea>
+          <div>
+            <label class="form-label fw-semibold">Optional: Add photos or videos</label>
+            <input id="mediaInput" type="file" class="form-control" accept="image/*,video/*" multiple>
+            <div class="form-text">Up to 5 files, max 10MB each. Supported: JPG, PNG, GIF, MP4, WEBM, MOV.</div>
+            <div id="mediaPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button id="submitBtn" class="btn btn-gradient"><i class="fas fa-paper-plane me-2"></i>Submit Review</button>
+          <a href="/templates/UserProfile/my_orders.html" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast" class="toast align-items-center text-bg-success border-0 toast-fixed" role="alert" aria-live="assertive" aria-atomic="true" style="display:none;">
+    <div class="d-flex">
+      <div class="toast-body" id="toastBody">Saved</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" aria-label="Close" onclick="document.getElementById('toast').style.display='none';"></button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/shared-auth.js"></script>
+  <script src="/static/js/shared-header.js"></script>
+  <script src="/static/js/user-dropdown.js"></script>
+  <script src="/static/js/message-manager.js"></script>
+  <script>
+    // Update user info function (available globally)
+    function updateUserInfoInHeader() {
+      try {
+        if (!window.AuthManager || !AuthManager.isAuthenticated()) {
+          const authLinks = document.getElementById('authLinks');
+          const userDropdown = document.getElementById('userDropdownContainer');
+          if (authLinks) authLinks.style.display = 'flex';
+          if (userDropdown) userDropdown.style.display = 'none';
+          return;
+        }
+
+        const user = AuthManager.getAuthUser();
+        if (!user) return;
+
+        const userName = user.name || (user.email ? user.email.split('@')[0] : 'User');
+        const userEmail = user.email || 'user@email.com';
+        const userRole = user.role || 'Member';
+
+        // Update by class names (what the HTML actually uses)
+        document.querySelectorAll('.user-name').forEach(el => el.textContent = userName);
+        document.querySelectorAll('.dropdown-user-name').forEach(el => el.textContent = userName);
+        document.querySelectorAll('.dropdown-user-email').forEach(el => el.textContent = userEmail);
+        document.querySelectorAll('.user-role').forEach(el => el.textContent = userRole);
+        document.querySelectorAll('.dropdown-user-role').forEach(el => el.textContent = userRole);
+
+        // Update avatars with initials
+        const avatarInitial = userName.charAt(0).toUpperCase();
+        document.querySelectorAll('.user-avatar').forEach(el => {
+          const icon = el.querySelector('i');
+          if (icon) {
+            el.innerHTML = avatarInitial;
+            el.style.display = 'flex';
+            el.style.alignItems = 'center';
+            el.style.justifyContent = 'center';
+            el.style.fontWeight = '600';
+          }
+        });
+        document.querySelectorAll('.user-avatar-large').forEach(el => {
+          const icon = el.querySelector('i');
+          if (icon) {
+            el.innerHTML = avatarInitial;
+            el.style.display = 'flex';
+            el.style.alignItems = 'center';
+            el.style.justifyContent = 'center';
+            el.style.fontWeight = '600';
+          }
+        });
+
+        // Show user dropdown, hide auth links
+        const authLinks = document.getElementById('authLinks');
+        const userDropdown = document.getElementById('userDropdownContainer');
+        if (authLinks) authLinks.style.display = 'none';
+        if (userDropdown) userDropdown.style.display = 'block';
+      } catch (e) {
+        console.error('Error updating user info:', e);
+      }
+    }
+
+    // Run on DOM ready and after a delay to ensure scripts are loaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(updateUserInfoInHeader, 200);
+      });
+    } else {
+      setTimeout(updateUserInfoInHeader, 200);
+    }
+
+    // Listen for auth state changes
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'auth_user' || e.key === 'auth_token') {
+        setTimeout(updateUserInfoInHeader, 100);
+      }
+    });
+  </script>
+  <script>
+    const qs = (k) => new URL(location.href).searchParams.get(k);
+    const orderId = Number(qs('order_id'));
+    const productIdParam = Number(qs('product_id')) || null;
+
+    let selectedProductId = productIdParam || null;
+    let currentRating = 0;
+    let orderCache = null;
+    const ratingText = ['Select rating','Terrible','Poor','Okay','Good','Excellent'];
+
+    function requireAuth() {
+      if (!window.AuthManager || !AuthManager.isLoggedIn()) {
+        location.href = '/templates/Authenticator/login.html';
+        return false;
+      }
+      return true;
+    }
+    function token() { return AuthManager.getAuthToken(); }
+
+    function setStatusBadge(status) {
+      const badge = document.getElementById('orderStatusBadge');
+      if (!badge || !status) return;
+      const s = String(status).toLowerCase();
+      badge.textContent = s.toUpperCase();
+      badge.style.background = s==='delivered' ? '#e8fff3' : '#f6f7fb';
+      badge.style.borderColor = s==='delivered' ? '#b9f0cf' : '#e9ecf5';
+      badge.style.color = s==='delivered' ? '#146c43' : '#5b6474';
+    }
+
+    function starInit() {
+      const stars = Array.from(document.querySelectorAll('#stars .star'));
+      const label = document.getElementById('ratingLabel');
+      function update(n) {
+        currentRating = n;
+        stars.forEach((x,i)=>{
+          x.classList.toggle('active', i < n);
+          x.setAttribute('aria-checked', i < n ? 'true':'false');
+        });
+        label.textContent = ratingText[n];
+      }
+      stars.forEach(s => {
+        s.addEventListener('click', () => update(Number(s.dataset.rating)));
+        s.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); update(Number(s.dataset.rating)); }
+          if (e.key === 'ArrowRight') { e.preventDefault(); update(Math.min(5, currentRating+1)); }
+          if (e.key === 'ArrowLeft') { e.preventDefault(); update(Math.max(1, currentRating-1)); }
+        });
+      });
+      update(0);
+    }
+
+    function showToast(msg, success=true) {
+      const t = document.getElementById('toast');
+      const body = document.getElementById('toastBody');
+      if (!t || !body) return;
+      body.textContent = msg;
+      t.className = `toast align-items-center ${success ? 'text-bg-success' : 'text-bg-danger'} border-0 toast-fixed`;
+      t.style.display = 'block';
+      setTimeout(()=>{ if (t.style.display==='block') t.style.display='none'; }, 3500);
+    }
+
+    function renderProducts(items, eligibility) {
+      const pc = document.getElementById('productsContainer');
+      const eligibleMap = new Map();
+      (eligibility.products || []).forEach(p => eligibleMap.set(Number(p.product_id), !p.already_reviewed));
+
+      // If product was chosen in My Orders, show single, read-only card.
+      if (productIdParam) {
+        const chosen = items.find(it => Number(it.product_id) === Number(productIdParam));
+        if (!chosen) { pc.innerHTML = '<div class="alert alert-warning">Selected product not found in this order.</div>'; return; }
+        const pid = Number(chosen.product_id);
+        const link = `/templates/Public/product.html?id=${pid}`;
+        pc.innerHTML = `
+          <div class="product-card">
+            <img class="product-thumb" src="${chosen.image_url || '/static/image.png'}" alt="${(chosen.product_name||'Product').replace(/"/g,'')}" onerror="this.src='/static/image.png'" />
+            <div class="flex-grow-1">
+              <div class="product-title">${(chosen.product_name || 'Product')}</div>
+              <div class="product-meta">Qty: ${chosen.quantity} ${chosen.size? '• Size: '+chosen.size:''} ${chosen.color? '• Color: '+chosen.color:''}</div>
+              <div class="mt-1"><a class="badge-soft" href="${link}" target="_blank">View</a></div>
+            </div>
+          </div>`;
+        selectedProductId = pid;
+        const viewLink = document.getElementById('viewProductLink');
+        if (viewLink) { viewLink.href = link; viewLink.style.display='inline'; }
+        return;
+      }
+
+      // Default multi-select grid
+      pc.innerHTML = items.map(it => {
+        const pid = Number(it.product_id);
+        const eligible = eligibleMap.get(pid) === true;
+        const disabled = !eligible;
+        const link = `/templates/Public/product.html?id=${pid}`;
+        const checked = selectedProductId ? (Number(selectedProductId)===pid) : eligible;
+        return `
+          <label class="product-card ${disabled?'opacity-75':''}">
+            <input type="radio" name="product" value="${pid}" class="form-check-input mt-2" ${checked && eligible ? 'checked':''} ${disabled?'disabled':''} style="position:absolute; left:12px; top:12px;">
+            <img class="product-thumb" src="${it.image_url || '/static/image.png'}" alt="${(it.product_name||'Product').replace(/"/g,'')}" onerror="this.src='/static/image.png'" />
+            <div class="flex-grow-1">
+              <div class="product-title">${(it.product_name || 'Product')}</div>
+              <div class="product-meta">Qty: ${it.quantity} ${it.size? '• Size: '+it.size:''} ${it.color? '• Color: '+it.color:''}</div>
+              <div class="mt-1">
+                <span class="badge-soft ${eligible?'':'text-decoration-line-through'}">${eligible?'Eligible':'Already reviewed'}</span>
+                <a class="badge-soft ms-1" href="${link}" target="_blank">View</a>
+              </div>
+            </div>
+          </label>`;
+      }).join('');
+
+      pc.onchange = (e) => {
+        const r = e.target.closest('input[name="product"]');
+        if (r) {
+          selectedProductId = Number(r.value);
+          const viewLink = document.getElementById('viewProductLink');
+          if (viewLink) { viewLink.href = `/templates/Public/product.html?id=${selectedProductId}`; viewLink.style.display='inline'; }
+        }
+      };
+
+      // Default selection: first eligible without requiring user click
+      if (!selectedProductId) {
+        const first = pc.querySelector('input[name="product"]:not([disabled])');
+        if (first) {
+          first.checked = true;
+          selectedProductId = Number(first.value);
+          const viewLink = document.getElementById('viewProductLink');
+          if (viewLink) { viewLink.href = `/templates/Public/product.html?id=${selectedProductId}`; viewLink.style.display='inline'; }
+        }
+      }
+    }
+
+    function updateViewLink() {
+      const viewLink = document.getElementById('viewProductLink');
+      if (viewLink && selectedProductId) {
+        viewLink.href = `/templates/Public/product.html?id=${selectedProductId}`;
+        viewLink.style.display = 'inline';
+      }
+    }
+
+    async function loadOrderAndEligibility() {
+      const orderMeta = document.getElementById('orderMeta');
+      const box = document.getElementById('eligibilityBox');
+      const submitBtn = document.getElementById('submitBtn');
+      try {
+        // Load orders and find this order to decorate UI with images
+        const oRes = await fetch('/api/orders', { headers: { 'Authorization': `Bearer ${token()}` } });
+        const oData = await oRes.json();
+        const order = (oData.orders || []).find(x => Number(x.id) === orderId);
+        if (order) {
+          orderCache = order;
+          const dateStr = order.created_at ? new Date(order.created_at).toLocaleString() : '';
+          orderMeta.textContent = `Order #${order.order_number || order.id} • ${dateStr}`;
+          setStatusBadge(order.status);
+        } else {
+          orderMeta.textContent = `Order #${orderId}`;
+        }
+
+        const eRes = await fetch(`/api/orders/${orderId}/review-eligibility`, { headers: { 'Authorization': `Bearer ${token()}` } });
+        const eData = await eRes.json();
+        if (!eRes.ok) throw new Error(eData.error || 'Failed to check eligibility');
+
+        if (eData.eligible !== true) {
+          box.style.display = 'block';
+          box.classList.replace('alert-info','alert-warning');
+          box.textContent = eData.reason || 'This order is not eligible for review yet.';
+          submitBtn.disabled = true;
+          return;
+        }
+
+        // If no product specified, automatically pick the first eligible (not already reviewed)
+        if (!productIdParam && !selectedProductId) {
+          const firstElig = (eData.products || []).find(p => !p.already_reviewed);
+          if (firstElig) {
+            selectedProductId = Number(firstElig.product_id);
+          }
+        }
+
+        // Build items for rendering from order (prefer full order data, but fall back to eligibility list)
+        let items = (order?.items || []).map(it => ({
+          product_id: it.product_id || it.productId || it.id,
+          product_name: it.product_name || it.name,
+          image_url: it.image_url,
+          quantity: it.quantity,
+          size: it.size,
+          color: it.color
+        }));
+        if (!items || items.length === 0) {
+          // Fallback: derive minimal items from eligibility payload
+          items = (eData.products || []).map(p => ({
+            product_id: p.product_id,
+            product_name: p.product_name || 'Product',
+            image_url: '/static/image.png',
+            quantity: 1,
+            size: '',
+            color: ''
+          }));
+        }
+        // If productId is pre-selected, ensure it is part of eligibility
+        if (productIdParam) {
+          const elig = (eData.products || []).find(p => Number(p.product_id) === Number(productIdParam));
+          if (!elig) {
+            box.style.display = 'block';
+            box.classList.replace('alert-info','alert-warning');
+            box.textContent = 'This product is not part of the selected order.';
+            submitBtn.disabled = true; return;
+          }
+        }
+        // If nothing eligible, block with message
+        const anyEligible = (eData.products || []).some(p => !p.already_reviewed);
+        if (!anyEligible && !productIdParam) {
+          box.style.display = 'block';
+          box.classList.replace('alert-info','alert-warning');
+          box.textContent = 'All items in this order have already been reviewed.';
+          submitBtn.disabled = true; return;
+        }
+        renderProducts(items, eData);
+        updateViewLink();
+        box.style.display = 'none';
+        submitBtn.disabled = false;
+      } catch (e) {
+        console.error(e);
+        box.style.display = 'block';
+        box.classList.replace('alert-info','alert-danger');
+        box.textContent = 'Failed to load order or eligibility.';
+        document.getElementById('submitBtn').disabled = true;
+      }
+    }
+
+    async function submitReview() {
+      if (!selectedProductId && productIdParam) { selectedProductId = productIdParam; }
+      if (!selectedProductId) { showToast('Select a product to review', false); return; }
+      if (currentRating < 1 || currentRating > 5) { showToast('Select a rating', false); return; }
+      const commentEl = document.getElementById('comment');
+      const comment = commentEl.value.trim();
+
+      // Build payload (multipart if media selected)
+      const mediaInput = document.getElementById('mediaInput');
+      const files = Array.from(mediaInput?.files || []);
+      const btn = document.getElementById('submitBtn');
+      const original = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Submitting...';
+      try {
+        let res;
+        if (files.length > 0) {
+          // Validate limits
+          if (files.length > 5) { throw new Error('Please select up to 5 files'); }
+          for (const f of files) { if (f.size > 10*1024*1024) throw new Error(`File ${f.name} exceeds 10MB`); }
+          const fd = new FormData();
+          fd.append('rating', String(currentRating));
+          fd.append('comment', comment);
+          fd.append('order_id', String(orderId));
+          files.forEach(f => fd.append('media[]', f));
+          res = await fetch(`/api/products/${selectedProductId}/reviews`, {
+            method: 'POST', headers: { 'Authorization': `Bearer ${token()}` }, body: fd
+          });
+        } else {
+          res = await fetch(`/api/products/${selectedProductId}/reviews`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
+            body: JSON.stringify({ rating: currentRating, comment, order_id: orderId })
+          });
+        }
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok || !data.success) throw new Error(data.error || 'Failed to submit review');
+        showToast('Review submitted successfully!', true);
+        setTimeout(()=>{ location.href = '/templates/UserProfile/my_orders.html'; }, 1000);
+      } catch (e) {
+        console.error('submit error', e);
+        showToast(e.message || 'Failed to submit review', false);
+      } finally {
+        btn.disabled = false; btn.innerHTML = original;
+      }
+    }
+
+    // Simple previews for selected media
+    (function initMediaPreview(){
+      const input = document.getElementById('mediaInput');
+      const wrap = document.getElementById('mediaPreview');
+      if (!input || !wrap) return;
+      input.addEventListener('change', ()=>{
+        wrap.innerHTML = '';
+        const files = Array.from(input.files || []);
+        files.slice(0,5).forEach(file => {
+          const url = URL.createObjectURL(file);
+          const isVideo = /video\//.test(file.type);
+          const el = document.createElement(isVideo ? 'video' : 'img');
+          el.src = url;
+          if (isVideo) { el.controls = true; el.muted = true; }
+          el.style.width = '120px'; el.style.height = '90px'; el.style.objectFit = 'cover'; el.style.borderRadius = '8px'; el.style.border = '1px solid #e9ecef';
+          wrap.appendChild(el);
+        });
+      });
+    })();
+
+    function bindCommentCounter(){
+      const el = document.getElementById('comment');
+      const now = document.getElementById('charNow');
+      if (!el || !now) return;
+      const update = ()=>{ now.textContent = el.value.length; localStorage.setItem(`review_draft_${orderId}`, el.value); };
+      el.addEventListener('input', update);
+      const draft = localStorage.getItem(`review_draft_${orderId}`);
+      if (draft) { el.value = draft.slice(0,1000); now.textContent = el.value.length; }
+    }
+
+    async function waitForToken(timeoutMs=5000) {
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs) {
+        try {
+          if (window.AuthManager && typeof AuthManager.getAuthToken === 'function') {
+            const t = AuthManager.getAuthToken();
+            if (t) return t;
+          }
+        } catch(_) {}
+        await new Promise(r => setTimeout(r, 50));
+      }
+      return null;
+    }
+
+    // Init
+    (async function init(){
+      if (!orderId) { alert('Missing order_id'); location.href='/templates/UserProfile/my_orders.html'; return; }
+
+      // Ensure AuthManager is ready and a token exists
+      const tok = await waitForToken(6000);
+      if (!tok) { alert('Please login to write a review.'); location.href='/templates/Authenticator/login.html'; return; }
+
+      // Update user info in header
+      if (typeof updateUserInfoInHeader === 'function') {
+        updateUserInfoInHeader();
+      }
+
+      // Replace placeholder quickly so it doesn't look stuck
+      const orderMeta = document.getElementById('orderMeta');
+      if (orderMeta && orderMeta.textContent === 'Loading order...') {
+        orderMeta.textContent = `Order #${orderId}`;
+      }
+
+      starInit();
+      bindCommentCounter();
+      await loadOrderAndEligibility();
+      document.getElementById('submitBtn').addEventListener('click', submitReview);
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && (e.ctrlKey||e.metaKey)) submitReview(); });
+    })();
+  </script>
+</body>
+</html>
