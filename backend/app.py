@@ -1,8 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory, render_template, session, redirect, url_for
 from dotenv import load_dotenv
 import os, json, uuid, jwt, time, smtplib, ssl, secrets
-import mysql.connector as mysql
-from mysql.connector import Error
 from flask_cors import CORS
 import requests
 from datetime import datetime, timedelta, timezone
@@ -12,6 +10,8 @@ import random
 from xendit_service import XenditService
 from email.mime.text import  MIMEText
 from email.mime.multipart import MIMEMultipart
+from supabase_client import supabase_client
+import asyncio
 
 app = Flask(__name__, 
     static_folder='../static',
@@ -119,17 +119,17 @@ def serve_static_files(filename):
         return send_from_directory('../static', filename)
 
 def get_db_connection():
+    """Legacy function - now returns Supabase client"""
+    return supabase_client
+
+def run_async(coro):
+    """Helper to run async functions in sync context"""
     try:
-        connection = mysql.connect(
-            host="127.0.0.1",
-            user="root",
-            password="",
-            database="ecommerce"
-        )
-        return connection
-    except Error as e:
-        print(f"Error connecting to MySQL: {e}")
-        return None
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop.run_until_complete(coro)
 def init_database():
     connection = get_db_connection()
     if connection:
@@ -18214,6 +18214,104 @@ def seller_ratings_summary(seller_id):
 
 # ===== REFUND MANAGEMENT ENDPOINTS =====
 
+@app.route('/api/orders/<order_number>/proof-of-delivery', methods=['POST'])
+@token_required
+def submit_buyer_proof_of_delivery(current_user, order_number):
+    """Submit proof of delivery from buyer perspective"""
+    connection = get_db_connection()
+    if not connection:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    cursor = connection.cursor(dictionary=True)
+    
+    try:
+        # Get order info
+        cursor.execute("""
+            SELECT o.id as order_id, o.buyer_id, o.status, o.delivery_status, d.id as delivery_id, d.rider_id
+            FROM orders o
+            LEFT JOIN deliveries d ON o.id = d.order_id
+            WHERE o.order_number = %s AND o.buyer_id = %s
+        """, (order_number, current_user['id']))
+        
+        order = cursor.fetchone()
+        
+        if not order:
+            return jsonify({'error': 'Order not found or unauthorized'}), 404
+        
+        if order['status'] not in ('confirmed', 'shipped', 'in_transit'):
+            return jsonify({'error': 'Order cannot be confirmed as delivered in current status'}), 400
+        
+        # Handle file upload (photo)
+        photo_url = None
+        if 'proof_photo' in request.files:
+            photo_file = request.files['proof_photo']
+            if photo_file and photo_file.filename:
+                if allowed_file(photo_file.filename):
+                    filename = secure_filename(photo_file.filename)
+                    unique_filename = f"buyer_proof_{order['order_id']}_{uuid.uuid4()}_{filename}"
+                    filepath = os.path.join(app.config['DELIVERY_PROOF_FOLDER'], unique_filename)
+                    photo_file.save(filepath)
+                    photo_url = f"/static/uploads/delivery_proof/{unique_filename}"
+                    print(f"[BUYER PROOF] Photo saved: {photo_url}")
+                else:
+                    return jsonify({'error': 'Invalid photo file type'}), 400
+        
+        if not photo_url:
+            return jsonify({'error': 'Photo is required'}), 400
+        
+        # Get form data
+        recipient_name = request.form.get('recipient_name', '')
+        delivery_notes = request.form.get('notes', '')
+        photos_count = request.form.get('photos_count', '1')
+        
+        # Insert delivery proof record (buyer confirmation)
+        cursor.execute("""
+            INSERT INTO delivery_proof (
+                delivery_id, order_id, rider_id, photo_url, delivery_notes,
+                customer_present, customer_id_verified, proof_type
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            order['delivery_id'], order['order_id'], order['rider_id'], 
+            photo_url, delivery_notes, True, True, 'customer_confirmation'
+        ))
+        
+        proof_id = cursor.lastrowid
+        
+        # Update order status to delivered
+        cursor.execute("""
+            UPDATE orders SET 
+                status = 'delivered',
+                delivery_status = 'delivered',
+                updated_at = NOW()
+            WHERE id = %s
+        """, (order['order_id'],))
+        
+        # Update delivery status if exists
+        if order['delivery_id']:
+            cursor.execute("""
+                UPDATE deliveries SET 
+                    status = 'delivered',
+                    delivery_time = NOW(),
+                    completed_at = NOW()
+                WHERE id = %s
+            """, (order['delivery_id'],))
+        
+        connection.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Proof of delivery submitted successfully',
+            'proof_id': proof_id
+        })
+        
+    except Exception as e:
+        connection.rollback()
+        print(f"[BUYER PROOF] Error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
 @app.route('/api/orders/<int:order_id>/refund', methods=['POST'])
 @token_required
 def request_refund(current_user, order_id):
@@ -18928,11 +19026,6 @@ def profile_photo(current_user):
     except Exception as e:
         print(f"[PROFILE_PHOTO] Error uploading photo: {str(e)}")
         return jsonify({'error': 'Failed to upload photo'}), 500
-
-@app.route('/static/uploads/profile_photos/<path:filename>')
-def serve_profile_photo(filename):
-    """Serve profile photos"""
-    return send_from_directory(os.path.join(app.static_folder, 'uploads', 'profile_photos'), filename)
 
 
 

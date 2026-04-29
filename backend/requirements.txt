@@ -8,3 +8,5 @@ python-dotenv
 Flask-Login
 Authlib
 gunicorn
+supabase
+psycopg2-binary
