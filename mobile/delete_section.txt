@@ -1,0 +1,16 @@
+﻿# Check if item exists in cart
+            cursor.execute("""
+                SELECT id FROM cart 
+                WHERE user_id = %s AND product_id = %s AND (size = %s OR (size IS NULL AND %s = ''))
+            """, (current_user['id'], product_id, size, size))
+            if not cursor.fetchone():
+                cursor.close()
+                connection.close()
+                return jsonify({'error': 'Item not found in cart'}), 404
+
+            # Remove item
+            cursor.execute("""
+                DELETE FROM cart 
+                WHERE user_id = %s AND product_id = %s AND (size = %s OR (size IS NULL AND %s = ''))
+            """, (current_user['id'], product_id, size, size))
+            connection.commit()

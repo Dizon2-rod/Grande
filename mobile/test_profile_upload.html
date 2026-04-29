@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Profile Photo Upload</title>
+    <style>
+        body { font-family: Arial; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        img { max-width: 200px; border-radius: 50%; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Profile Photo Upload Test</h1>
+    
+    <div class="section">
+        <h3>1. Login First</h3>
+        <input type="email" id="email" placeholder="Email" value="admin@example.com">
+        <input type="password" id="password" placeholder="Password" value="admin123">
+        <button onclick="login()">Login</button>
+        <div id="loginStatus"></div>
+    </div>
+    
+    <div class="section">
+        <h3>2. Upload Profile Photo</h3>
+        <input type="file" id="photoFile" accept="image/*">
+        <button onclick="uploadPhoto()">Upload</button>
+        <div id="uploadStatus"></div>
+    </div>
+    
+    <div class="section">
+        <h3>3. View Current Photo</h3>
+        <button onclick="loadPhoto()">Load Photo</button>
+        <div id="photoDisplay"></div>
+    </div>
+    
+    <div class="section">
+        <h3>4. Remove Photo</h3>
+        <button onclick="removePhoto()">Remove Photo</button>
+        <div id="removeStatus"></div>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('token');
+        
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const status = document.getElementById('loginStatus');
+            
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    token = data.token;
+                    localStorage.setItem('token', token);
+                    status.innerHTML = '<span class="success">✓ Logged in successfully!</span>';
+                } else {
+                    status.innerHTML = '<span class="error">✗ ' + (data.error || 'Login failed') + '</span>';
+                }
+            } catch (err) {
+                status.innerHTML = '<span class="error">✗ Error: ' + err.message + '</span>';
+            }
+        }
+        
+        async function uploadPhoto() {
+            const fileInput = document.getElementById('photoFile');
+            const status = document.getElementById('uploadStatus');
+            
+            if (!token) {
+                status.innerHTML = '<span class="error">✗ Please login first</span>';
+                return;
+            }
+            
+            if (!fileInput.files[0]) {
+                status.innerHTML = '<span class="error">✗ Please select a file</span>';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('photo', fileInput.files[0]);
+            
+            try {
+                const res = await fetch('/api/account/profile-photo', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    status.innerHTML = '<span class="success">✓ Photo uploaded! URL: ' + data.photo_url + '</span>';
+                    loadPhoto();
+                } else {
+                    status.innerHTML = '<span class="error">✗ ' + (data.error || 'Upload failed') + '</span>';
+                }
+            } catch (err) {
+                status.innerHTML = '<span class="error">✗ Error: ' + err.message + '</span>';
+            }
+        }
+        
+        async function loadPhoto() {
+            const display = document.getElementById('photoDisplay');
+            
+            if (!token) {
+                display.innerHTML = '<span class="error">✗ Please login first</span>';
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/account/profile', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                const data = await res.json();
+                
+                if (data.success && data.user.profile_picture) {
+                    display.innerHTML = '<img src="' + data.user.profile_picture + '" alt="Profile"><br><span class="success">Photo URL: ' + data.user.profile_picture + '</span>';
+                } else {
+                    display.innerHTML = '<span>No profile photo set</span>';
+                }
+            } catch (err) {
+                display.innerHTML = '<span class="error">✗ Error: ' + err.message + '</span>';
+            }
+        }
+        
+        async function removePhoto() {
+            const status = document.getElementById('removeStatus');
+            
+            if (!token) {
+                status.innerHTML = '<span class="error">✗ Please login first</span>';
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/account/profile-photo', {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    status.innerHTML = '<span class="success">✓ Photo removed!</span>';
+                    loadPhoto();
+                } else {
+                    status.innerHTML = '<span class="error">✗ ' + (data.error || 'Remove failed') + '</span>';
+                }
+            } catch (err) {
+                status.innerHTML = '<span class="error">✗ Error: ' + err.message + '</span>';
+            }
+        }
+        
+        // Auto-load photo if logged in
+        if (token) {
+            document.getElementById('loginStatus').innerHTML = '<span class="success">✓ Already logged in</span>';
+            loadPhoto();
+        }
+    </script>
+</body>
+</html>

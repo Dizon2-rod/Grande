@@ -1,0 +1,30 @@
+﻿if cart_item:
+                # Update existing cart item
+                new_quantity = cart_item['quantity'] + quantity
+                if new_quantity > product['stock_quantity']:
+                    return jsonify({'error': 'Not enough stock available'}), 400
+                    
+                cursor.execute("""
+                    UPDATE cart 
+                    SET quantity = %s, 
+                        price = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (new_quantity, effective_price, cart_item['id']))
+            else:
+                # Add new cart item
+                cursor.execute("""
+                    INSERT INTO cart (
+                        user_id, product_id, quantity, size, color, 
+                        price, created_at, updated_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """, (
+                    current_user['id'], 
+                    product_id,
+                    quantity,
+                    size,
+                    color,
+                    effective_price
+                ))
+
+            connection.commit()

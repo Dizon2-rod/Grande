@@ -1,0 +1,5 @@
+﻿if quantity <= 0:
+                # Remove item if quantity is 0 or negative
+                cursor.execute("""
+                    DELETE FROM cart 
+                    WHERE user_id = %s AND product_id = %s AND (size = %s OR (size IS NULL AND %s = ''))
